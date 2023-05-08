@@ -1,0 +1,187 @@
+1-I was a goddess of wisdom and war,but was treated as less than a man.My gender held me back, though I couldhave led the land. Who am I?
+A-Athena
+B-Metis
+C-Zeus
+2-I am a force that can divide,Based on gender, I'm often applied.But when used to oppress, it's not fair,What am I, that challenges human rights to bear?
+A-Discrimination
+B-Sexism
+C-Hate
+3-I'm often used to put one gender down,Though it's not fair and makes me frown. It's a violation of human rights,And it's something we must fight. What am I?
+A-Violence
+B-Abuse
+C-Slurs
+
+#include "enigme.h"
+#include <SDL/SDL.h>
+#include <SDL/SDL_ttf.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include"image.h"
+#define LARGEUR_ECRAN 728
+#define HAUTEUR_ECRAN 582
+
+int main(int agrc,char** argv) 
+{
+    
+    char f1[20]="Questions.txt";
+    char f2[20]="Reponses.txt";
+	backg bg;
+    TTF_Init();
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Surface *screen;
+    int done=1;
+    int nb=0; //nb d'affichage
+    SDL_Event event;
+    enigme e;
+    Entity entity;
+    screen=SDL_SetVideoMode(728, 582, 32,SDL_HWSURFACE | SDL_RESIZABLE | SDL_DOUBLEBUF);
+    if(!screen){
+		printf("Unable to set 640x480 video: %s\n",SDL_GetError());
+		return 1;}
+//initialisation des variables
+	initBackg(&bg);
+	initializeEntity(&entity);
+
+    genererEnigme(&e,f1,f2);
+//loop
+    while(done)
+    {
+	//Display
+	afficherBackg(bg,screen);
+	SDL_Flip(screen);
+	afficherEnigme(e,screen);
+        if(nb<7 ) { // 3 seconds per sprite
+              animateEntity(&entity,screen);
+		nb++;}
+	
+	//Input
+		SDL_PollEvent(&event);
+		switch(event.type)
+		{//exit if the window is closed
+			case SDL_QUIT:
+				done=0;
+			break;
+			case SDL_KEYDOWN:
+           		// Gestion des événements clavier
+            		switch (event.key.keysym.sym) 
+			{
+               			case SDLK_ESCAPE:
+                   		 // Appui sur la touche "Escape" : quitter le programme
+                   		 done = 0;
+                   		 break;
+			}
+       		}
+    }
+    
+    //SDL_Delay(5000); // wait for 5 seconds before quitting
+    //free surfaces
+	libererBackg(bg);
+    SDL_FreeSurface(screen);
+    TTF_Quit();
+    SDL_Quit();
+//free_music(music);
+    return 0;
+}
+
+
+.h
+#ifndef ENIGME_h
+#define ENIGME_h
+#include<SDL/SDL.h>
+#include<SDL/SDL_image.h>
+#include<SDL/SDL_ttf.h>
+typedef struct 
+{
+    SDL_Rect src_rect, dest_rect; // SDL_Rect -- Defines a rectangular area //
+    SDL_Surface *spritesheet;
+    int sprite_index;
+    int sprite_width; // assuming 7 sprites in the sprite sheet
+    int sprite_height;
+}Entity;
+
+typedef struct {
+    char question[100];  //4 tab ou bien tab pour la suppression
+    char choices[3][50];
+//position d affichage pour chaqu'un
+//detection souris et boutons
+    char correct_choice[10];
+} enigme;
+void initializeEntity(Entity* entity);
+void animateEntity(Entity* entity,SDL_Surface *screen);
+void afficherEnigme(enigme e, SDL_Surface * screen);
+void genererEnigme(enigme *e, char *nomfichier1, char *nomfichier2);
+#endif
+
+
+.c
+#include "enigme.h"
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+//#include <SDL.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define NB_REPONSES 3
+#define MAX_LONGUEUR 100
+#define LARGEUR_ECRAN 640
+#define HAUTEUR_ECRAN 480
+
+void genererEnigme(enigme *e, char nomfichier1[], char nomfichier2[])
+{FILE * f_questions=NULL, * f_reponses=NULL;
+    char line[2000],line2[20];
+    int i;
+    // Open the files for reading
+    f_questions = fopen(nomfichier1,"r");
+    if (f_questions== NULL) {
+        printf("Erreur : Impossible d'ouvrir le fichier des questions \n");
+        return;
+    }
+    // Read the question from the questions file
+    fgets(line,2000,f_questions);
+    strcpy(e->question,line);
+	printf("%s \n",e->question);
+    // Read the answer choices from the questions file
+    for (i = 0; i < 3; i++) {
+        fgets(line,2000, f_questions);
+        strcpy(e->choices[i],line);
+    }
+    // Close the file
+    fclose(f_questions);
+
+    f_reponses = fopen(nomfichier2,"r");
+    if (f_reponses== NULL) {
+        printf("Erreur : Impossible d'ouvrir le fichier des reponses \n");
+        return;
+    }
+    // Read the answer from the answers file and assign it to the correct choice
+    fgets(line2,20,f_reponses);
+    strcpy(e->correct_choice, line2);
+    printf("la bonne reponse: %s\n",e->correct_choice);
+    // Close the file
+    fclose(f_reponses);
+}
+
+void afficherEnigme(enigme e, SDL_Surface *screen) {
+    int i;
+    SDL_Color couleur = {255,255,255};
+    TTF_Font* police = TTF_OpenFont("Ubuntu-RI.ttf", 25);
+    SDL_Surface *texte_question = TTF_RenderText_Blended(police,e.question,couleur);
+    SDL_Rect position_question = {50,50,0,0};
+    SDL_BlitSurface(texte_question, NULL, screen, &position_question);
+    SDL_Surface *texte_choix[NB_REPONSES];
+    SDL_Rect position_choix[NB_REPONSES];
+    for (i = 0; i < NB_REPONSES; i++) {
+        texte_choix[i] = TTF_RenderText_Blended(police, e.choices[i], couleur);
+        position_choix[i].x = 50;
+        position_choix[i].y = 150 + i * 50;
+        SDL_BlitSurface(texte_choix[i], NULL, screen, &position_choix[i]);
+    }
+
+    SDL_FreeSurface(texte_question);
+    for (i = 0; i < NB_REPONSES; i++) {
+        SDL_FreeSurface(texte_choix[i]);
+    }
+    TTF_CloseFont(police);
+}
+
